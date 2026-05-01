@@ -7,3 +7,4 @@ painel-palpite/.env.local
 engine-python/venv/
 engine-python/__pycache__/
 *.pyc
+engine-python/.env

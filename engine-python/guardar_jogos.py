@@ -1,18 +1,20 @@
 import requests
 from supabase import create_client, Client
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # 1. Configurações do Supabase (A Fundação)
 # ATENÇÃO: Substitua a URL abaixo pela Project URL que está no painel do seu Supabase
-url_supabase: str = "https://oyrtnupdutcrltvxsrji.supabase.co" 
-
-# Aqui já coloquei a sua chave publicável nova que você encontrou!
-chave_supabase: str = "CHAVE_SECRETA_AQUI"
+url_supabase: str = os.getenv("SUPABASE_URL")
+chave_supabase: str = os.getenv("SUPABASE_SECRET_KEY")
 supabase: Client = create_client(url_supabase, chave_supabase)
 
 # 2. Configurações da API-Football (A Extração)
-url_api = "https://v3.football.api-sports.io/fixtures?team=121&season=2024"
+url_api = "https://v3.football.api-sports.io/fixtures?team=133&season=2024"
 headers = {
-    'x-apisports-key': 'e30f60c41ea64026d24d04bab3124aaf' # Coloque sua chave da API aqui
+    'x-apisports-key': os.getenv("API_FOOTBALL_KEY")
 }
 
 print("Buscando dados na API-Football (última vez para esses jogos!)...")

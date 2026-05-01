@@ -1,53 +1,73 @@
 import requests
+import os
+from dotenv import load_dotenv
+from supabase import create_client, Client
 
-url = "https://v3.football.api-sports.io/fixtures?team=127&season=2023"
+# 1. CARREGAR AS CONFIGURAÇÕES (O Cofre)
+load_dotenv()
+
+url_supabase: str = os.getenv("SUPABASE_URL")
+chave_supabase: str = os.getenv("SUPABASE_SECRET_KEY")
+api_key: str = os.getenv("API_FOOTBALL_KEY")
+
+# Inicializa o cliente do Supabase
+supabase: Client = create_client(url_supabase, chave_supabase)
+
+# 2. CONFIGURAÇÕES DA API (Extração Dinâmica)
+# Por agora deixamos o Palmeiras (121), mas podes mudar aqui para qualquer ID
+id_time = 133 
+url_api = f"https://v3.football.api-sports.io/fixtures?team={id_time}&season=2024"
 
 headers = {
-    'x-apisports-key': 'e30f60c41ea64026d24d04bab3124aaf' # Coloque sua chave novamente!
+    'x-apisports-key': api_key
 }
 
-print("Buscando jogos e calculando médias...")
-response = requests.request("GET", url, headers=headers, timeout=10)
+print(f"🚀 Iniciando extração de dados para o Time ID: {id_time}...")
+response = requests.request("GET", url_api, headers=headers, timeout=10)
 
 if response.status_code == 200:
     data = response.json()
     
     if data.get('errors'):
-        print("⚠️ Erro da API:", data['errors'])
+        print("❌ Erro da API:", data['errors'])
     else:
-        # Filtra os jogos encerrados
+        # Filtra apenas jogos que já terminaram
         jogos_encerrados = [jogo for jogo in data['response'] if jogo['fixture']['status']['short'] in ['FT', 'PEN', 'AET']]
         ultimos_10_jogos = jogos_encerrados[-10:]
         
-        # Variáveis para a matemática
-        gols_feitos_casa = 0
-        jogos_em_casa = 0
-        gols_feitos_fora = 0
-        jogos_fora = 0
-
+        print(f"✅ {len(ultimos_10_jogos)} jogos encontrados. Injetando no Supabase...")
+        
         for jogo in ultimos_10_jogos:
-            time_casa = jogo['teams']['home']['name']
+            match_id = jogo['fixture']['id']
+            data_jogo = jogo['fixture']['date']
+            
+            # Dados das Equipas
+            casa_id = jogo['teams']['home']['id']
+            casa_nome = jogo['teams']['home']['name']
+            fora_id = jogo['teams']['away']['id']
+            fora_nome = jogo['teams']['away']['name']
+            
+            # Golos
             gols_casa = jogo['goals']['home']
             gols_fora = jogo['goals']['away']
-            
-            # Conta se o Flamengo jogou em casa ou fora e soma os gols
-            if time_casa == "Flamengo":
-                gols_feitos_casa += gols_casa
-                jogos_em_casa += 1
-            else:
-                gols_feitos_fora += gols_fora
-                jogos_fora += 1
 
-        print("\n📊 ESTATÍSTICAS RECENTES DO FLAMENGO (Últimos 10 jogos):")
-        print("-" * 50)
-        
-        if jogos_em_casa > 0:
-            media_casa = gols_feitos_casa / jogos_em_casa
-            print(f"🏠 Média de Gols Feitos (Em Casa): {media_casa:.2f} por jogo (em {jogos_em_casa} jogos)")
-        
-        if jogos_fora > 0:
-            media_fora = gols_feitos_fora / jogos_fora
-            print(f"✈️ Média de Gols Feitos (Fora): {media_fora:.2f} por jogo (em {jogos_fora} jogos)")
-        print("-" * 50)
+            # Injeção nas Tabelas (Upsert evita duplicados)
+            supabase.table('teams').upsert({'id': casa_id, 'name': casa_nome}).execute()
+            supabase.table('teams').upsert({'id': fora_id, 'name': fora_nome}).execute()
+
+            supabase.table('matches').upsert({
+                'id': match_id,
+                'team_home': casa_id,
+                'team_away': fora_id,
+                'date': data_jogo
+            }).execute()
+
+            supabase.table('stats').upsert({
+                'match_id': match_id,
+                'goals_home': gols_casa,
+                'goals_away': gols_fora
+            }).execute()
+
+        print("🎉 Sucesso Absoluto! Dados blindados no banco.")
 else:
-    print(f"❌ Erro na requisição. Código: {response.status_code}")
+    print(f"❌ Falha na conexão: Status {response.status_code}")

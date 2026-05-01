@@ -1,11 +1,12 @@
 import math
 from supabase import create_client, Client
-
+import os
+from dotenv import load_dotenv
+# Carrega as chaves do ficheiro .env
+load_dotenv()
 # 1. Conexão ao TEU Banco de Dados
-url_supabase: str = "https://oyrtnupdutcrltvxsrji.supabase.co"
-
-# ATENÇÃO: Como vamos GRAVAR na tabela analysis, TEMOS de usar a Secret Key!
-chave_supabase: str = "CHAVE_SECRETA_AQUI" 
+url_supabase: str = os.getenv("SUPABASE_URL")
+chave_supabase: str = os.getenv("SUPABASE_SECRET_KEY")
 supabase: Client = create_client(url_supabase, chave_supabase)
 
 print("A consultar a tua base de dados localmente...\n")
@@ -15,7 +16,7 @@ jogos = supabase.table('matches').select('*').execute().data
 estatisticas = supabase.table('stats').select('*').execute().data
 
 # ID do Flamengo
-id_flamengo = 121
+id_flamengo = 133
 gols_marcados = 0
 jogos_contados = 0
 
