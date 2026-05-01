@@ -1,0 +1,9 @@
+# Node / Next.js
+painel-palpite/node_modules/
+painel-palpite/.next/
+painel-palpite/.env.local
+
+# Python
+engine-python/venv/
+engine-python/__pycache__/
+*.pyc
